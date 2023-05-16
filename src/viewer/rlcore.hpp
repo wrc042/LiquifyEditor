@@ -8,6 +8,7 @@ class RLCore {
   public:
     void init(string name) {
         InitWindow(_width, _height, name.c_str());
+        SetTargetFPS(60);
         omp_init_lock(&_buflock);
     }
     void run() {
@@ -20,9 +21,11 @@ class RLCore {
     virtual void init_callback(int bufnum) = 0;
     virtual void update_callback(int bufnum) = 0;
     virtual void gui_callback(){};
+    virtual void on_init(){};
     virtual void save_callback(){};
     void rl_loop() {
         BeginDrawing();
+        ClearBackground(RAYWHITE);
         gui_callback();
 
         array<int, 2> bufnum;
@@ -31,19 +34,17 @@ class RLCore {
         get_bufnum(bufnum, is_reset);
 
         if (is_reset) {
+            init_callback(bufnum[1]);
             if (bufnum[0] != bufnum[1]) {
-                init_callback(bufnum[1]);
+                is_reset = false;
             }
         } else {
-            if (bufnum[0] != bufnum[1]) {
-                save_callback();
-                update_callback(bufnum[1]);
-            }
+            update_callback(bufnum[1]);
         }
         bufnum[0] = bufnum[1];
-        is_reset = false;
 
         set_bufnum(bufnum, is_reset);
+        DrawFPS(3, 0);
         EndDrawing();
     }
     void get_bufnum(array<int, 2> &bufnum, bool &is_reset) {
@@ -67,11 +68,11 @@ class RLCore {
     }
     bool to_update(array<int, 2> &bufnum) { return bufnum[0] == bufnum[1]; }
 
-    bool _is_reset = false;
+    bool _is_reset = true;
 
   private:
-    int _width = 1280;
-    int _height = 720;
+    int _width = 1600;
+    int _height = 900;
 
     array<int, 2> _bufnum = {0, 0};
     omp_lock_t _buflock;

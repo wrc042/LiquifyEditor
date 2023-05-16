@@ -68,10 +68,11 @@
 //     return 0;
 // }
 
-#include "viewer/rleditor.hpp"
+#include "viewer/rl_euler_editor.hpp"
 
 int main() {
-    RLEditor editor;
+    RLEulerEditor editor;
     editor.init("liquify editor");
+    editor.reset_buffer();
     editor.run();
 }
