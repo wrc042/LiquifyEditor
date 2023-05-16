@@ -1,0 +1,7 @@
+.vscode
+.xmake
+build
+bin
+*.ini
+compile_commands.json
+*.ps1
