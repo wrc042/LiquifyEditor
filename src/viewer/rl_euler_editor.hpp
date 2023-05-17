@@ -3,32 +3,66 @@
 
 class RLEulerEditor : public RLCore {
   public:
-    void reset_buffer() {
+    void reset_buffer(const vector<Color> &pixels) { reset_buffer(&pixels[0]); }
+    void reset_buffer(const Color *pixels) {
         array<int, 2> bufnum;
         bool is_reset;
         get_bufnum(bufnum, is_reset);
         init_bufnum(bufnum);
         // image operation
+        for (int i = 0; i < _range.prod(); i++) {
+            _pixel_buffers[bufnum[1]][i] = pixels[i];
+        }
         is_reset = true;
         set_bufnum(bufnum, is_reset);
     }
-    void update_buffer() {
+    void update_buffer(const vector<Color> &pixels) {
+        update_buffer(&pixels[0]);
+    }
+    void update_buffer(const Color *pixels) {
         array<int, 2> bufnum;
         bool is_reset;
         get_bufnum(bufnum, is_reset);
         if (to_update(bufnum)) {
             // image operation
+            for (int i = 0; i < _range.prod(); i++) {
+                _pixel_buffers[bufnum[1]][i] = pixels[i];
+            }
             update_bufnum(bufnum);
         }
         set_bufnum(bufnum, is_reset);
     }
+    const bool &is_closed() { return _is_closed; }
 
   protected:
+    void on_init() {
+        _pixel_buffers[0].resize(_range.prod());
+        _pixel_buffers[1].resize(_range.prod());
+
+        _images[0].data = &_pixel_buffers[0][0];
+        _images[0].width = _range.x();
+        _images[0].height = _range.y();
+        _images[0].format = IMAGE_FORMAT;
+        _images[0].mipmaps = 1;
+
+        _images[1].data = &_pixel_buffers[1][0];
+        _images[1].width = _range.x();
+        _images[1].height = _range.y();
+        _images[1].format = IMAGE_FORMAT;
+        _images[1].mipmaps = 1;
+
+        _textures[0] = LoadTextureFromImage(_images[0]);
+        _textures[1] = LoadTextureFromImage(_images[1]);
+    }
+    void texture_callback(int bufnum) {
+        UpdateTexture(_textures[bufnum], &_pixel_buffers[bufnum][0]);
+    }
     void init_callback(int bufnum) {
         DrawText("Initializing...", 700, 450, 30, BLACK);
     };
     void update_callback(int bufnum) {
         DrawRectangle(_origin.x(), _origin.y(), _range.x(), _range.y(), BLACK);
+        DrawTexture(_textures[bufnum], _origin.x(), _origin.y(), WHITE);
 
         int text_height_cnt = 0;
 
@@ -139,4 +173,8 @@ class RLEulerEditor : public RLCore {
     double _dampling_max = 1e-3;
 
     EulerSolverParam solver_param;
+
+    array<Texture, 2> _textures;
+    array<Image, 2> _images;
+    array<vector<Color>, 2> _pixel_buffers;
 };

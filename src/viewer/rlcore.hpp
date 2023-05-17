@@ -10,28 +10,34 @@ class RLCore {
         InitWindow(_width, _height, name.c_str());
         SetTargetFPS(60);
         omp_init_lock(&_buflock);
+        on_init();
     }
     void run() {
         while (!WindowShouldClose()) {
             rl_loop();
         };
+        _is_closed = true;
     }
 
   protected:
     virtual void init_callback(int bufnum) = 0;
+    virtual void texture_callback(int bufnum){};
     virtual void update_callback(int bufnum) = 0;
     virtual void gui_callback(){};
     virtual void on_init(){};
     virtual void save_callback(){};
     void rl_loop() {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        gui_callback();
-
         array<int, 2> bufnum;
         bool is_reset;
 
         get_bufnum(bufnum, is_reset);
+
+        if (!is_reset) {
+            texture_callback(bufnum[1]);
+        }
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        gui_callback();
 
         if (is_reset) {
             init_callback(bufnum[1]);
@@ -68,6 +74,7 @@ class RLCore {
     }
     bool to_update(array<int, 2> &bufnum) { return bufnum[0] == bufnum[1]; }
 
+    bool _is_closed = false;
     bool _is_reset = true;
 
   private:
