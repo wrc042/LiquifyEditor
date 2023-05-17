@@ -21,6 +21,7 @@ using Eigen::SparseMatrix;
 using Eigen::Vector2d;
 using Eigen::Vector2i;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::Vector3i;
 using Eigen::VectorXd;
 using Jvalue = Json::Value;
