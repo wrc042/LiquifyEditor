@@ -17,7 +17,7 @@ class EulerFluidSolver {
                           _grid_spacing);
         _density.resize(_resolution, _origin, _grid_spacing);
         _pixels.resize(_img_width * _img_height);
-        build_cg_solver();
+        build_solver();
         clear_velocity();
         for (int i = _resolution.x() * 0.4; i < _resolution.x() * 0.6; i++) {
             for (int j = _resolution.y() * 0.4; j < _resolution.y() * 0.6;
@@ -130,7 +130,7 @@ class EulerFluidSolver {
     }
 
   protected:
-    void build_cg_solver() {
+    void build_solver() {
         typedef Eigen::Triplet<double> T;
         int n = _resolution.prod();
         _projectoin_matrix.resize(n, n);
@@ -163,7 +163,9 @@ class EulerFluidSolver {
         }
         _projectoin_matrix.setFromTriplets(triple_list.begin(),
                                            triple_list.end());
-        _cg_sovler.compute(_projectoin_matrix);
+        // _cg_sovler.compute(_projectoin_matrix);
+        // _icpcg_sovler.compute(_projectoin_matrix);
+        _lu_solver.compute(_projectoin_matrix);
     }
     void clear_velocity() {
         _velocityu.fill([](Vector2d pos) { return 0.0; });
@@ -235,14 +237,15 @@ class EulerFluidSolver {
                 count++;
             }
         }
-        p = _cg_sovler.solve(b);
+        // p = _cg_sovler.solve(b);
+        // p = _icpcg_sovler.solve(b);
+        p = _lu_solver.solve(b);
 
         for (int i = 0; i < _velocityu.resolution().x(); i++) {
             for (int j = 0; j < _velocityu.resolution().y(); j++) {
                 if (i == 0 || i == _velocityu.resolution().x() - 1) {
                     _velocityu(i, j) = 0;
                     continue;
-                    ;
                 }
                 _velocityu(i, j) -=
                     (p(i * offset + j) - p((i - 1) * offset + j)) /
@@ -255,7 +258,6 @@ class EulerFluidSolver {
                 if (j == 0 || j == _velocityv.resolution().y() - 1) {
                     _velocityv(i, j) = 0;
                     continue;
-                    ;
                 }
                 _velocityv(i, j) -=
                     (p(i * offset + j) - p(i * offset + j - 1)) / _grid_spacing;
@@ -288,4 +290,10 @@ class EulerFluidSolver {
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
                              Eigen::Lower | Eigen::Upper>
         _cg_sovler;
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                             Eigen::Lower | Eigen::Upper,
+                             Eigen::IncompleteCholesky<double>>
+        _icpcg_sovler;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>>
+        _lu_solver;
 };
