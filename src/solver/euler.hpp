@@ -103,7 +103,10 @@ class EulerFluidSolver {
         }
     }
 
-    void step() {}
+    void step() {
+        advection(_time_interval);
+        projection();
+    }
     void run(const bool &is_closed) {
         if (_reset_buffer != NULL) {
             assign_image();
@@ -129,6 +132,121 @@ class EulerFluidSolver {
     void clear_velocity() {
         _velocityu.fill([](Vector2d pos) { return 0.0; });
         _velocityv.fill([](Vector2d pos) { return 0.0; });
+    }
+    void advection(double time_interval) {
+        Grid2<double> oldu;
+        oldu.clone(_velocityu);
+        Grid2<double> oldv;
+        oldv.clone(_velocityv);
+        Grid2<Vector4d> oldd;
+        oldd.clone(_density);
+
+        for (int i = 0; i < _velocityu.resolution().x(); i++) {
+            for (int j = 0; j < _velocityu.resolution().y(); j++) {
+                Vector2d pos = back_trace(oldu, oldv, time_interval,
+                                          _velocityu.idx2pos(i, j));
+                _velocityu(i, j) = oldu.linear_sample(pos);
+            }
+        }
+
+        for (int i = 0; i < _velocityv.resolution().x(); i++) {
+            for (int j = 0; j < _velocityv.resolution().y(); j++) {
+                Vector2d pos = back_trace(oldu, oldv, time_interval,
+                                          _velocityv.idx2pos(i, j));
+                _velocityv(i, j) = oldv.linear_sample(pos);
+            }
+        }
+
+        for (int i = 0; i < _density.resolution().x(); i++) {
+            for (int j = 0; j < _density.resolution().y(); j++) {
+                Vector2d pos = back_trace(oldu, oldv, time_interval,
+                                          _density.idx2pos(i, j));
+                _density(i, j) = oldd.linear_sample(pos);
+            }
+        }
+    }
+    Vector2d back_trace(const Grid2<double> &velocityu,
+                        const Grid2<double> &velocityv, double time_interval,
+                        const Vector2d &pt_start) {
+        double vu = velocityu.linear_sample(pt_start);
+        double vv = velocityv.linear_sample(pt_start);
+        return pt_start - time_interval * Vector2d(vu, vv);
+    }
+    void projection() {
+        typedef Eigen::Triplet<double> T;
+        int n = _resolution.prod();
+        int offset = _resolution.y();
+        std::vector<T> triple_list;
+        Eigen::SparseMatrix<double> A(n, n);
+        Eigen::VectorXd b(n);
+        Eigen::VectorXd p(n);
+
+        int count = 0;
+        for (int i = 0; i < _resolution.x(); i++) {
+            for (int j = 0; j < _resolution.y(); j++) {
+                b(count) =
+                    -_grid_spacing * (_velocityu(i + 1, j) - _velocityu(i, j) +
+                                      _velocityv(i, j + 1) - _velocityv(i, j));
+                int coeff = 0;
+                if (i > 0) {
+                    triple_list.push_back(T(count, (i - 1) * offset + j, -1));
+                    coeff += 1;
+                } else {
+                    b(count) -= _grid_spacing * _velocityu(i, j);
+                }
+                if (i + 1 < _resolution.x()) {
+                    triple_list.push_back(T(count, (i + 1) * offset + j, -1));
+                    coeff += 1;
+                } else {
+                    b(count) -= -_grid_spacing * _velocityu(i + 1, j);
+                }
+                if (j > 0) {
+                    triple_list.push_back(T(count, i * offset + j - 1, -1));
+                    coeff += 1;
+                } else {
+                    b(count) -= _grid_spacing * _velocityv(i, j);
+                }
+                if (j + 1 < _resolution.y()) {
+                    triple_list.push_back(T(count, i * offset + j + 1, -1));
+                    coeff += 1;
+                } else {
+                    b(count) -= -_grid_spacing * _velocityv(i, j + 1);
+                }
+                triple_list.push_back(T(count, count, coeff));
+                count++;
+            }
+        }
+        A.setFromTriplets(triple_list.begin(), triple_list.end());
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                                 Eigen::Lower | Eigen::Upper>
+            cg;
+        cg.compute(A);
+        p = cg.solve(b);
+
+        for (int i = 0; i < _velocityu.resolution().x(); i++) {
+            for (int j = 0; j < _velocityu.resolution().y(); j++) {
+                if (i == 0 || i == _velocityu.resolution().x() - 1) {
+                    _velocityu(i, j) = 0;
+                    continue;
+                    ;
+                }
+                _velocityu(i, j) -=
+                    (p(i * offset + j) - p((i - 1) * offset + j)) /
+                    _grid_spacing;
+            }
+        }
+
+        for (int i = 0; i < _velocityv.resolution().x(); i++) {
+            for (int j = 0; j < _velocityv.resolution().y(); j++) {
+                if (j == 0 || j == _velocityv.resolution().y() - 1) {
+                    _velocityv(i, j) = 0;
+                    continue;
+                    ;
+                }
+                _velocityv(i, j) -=
+                    (p(i * offset + j) - p(i * offset + j - 1)) / _grid_spacing;
+            }
+        }
     }
 
   private:

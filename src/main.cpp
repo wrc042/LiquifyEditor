@@ -21,7 +21,7 @@ int main() {
         }
     }
 
-    int level = 5;
+    int level = 10;
     EulerFluidSolver solver(level);
     solver.assign_field(pixels);
     solver.set_reset_buffer(
