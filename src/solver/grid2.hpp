@@ -10,6 +10,12 @@ template <typename T> class Grid2 {
           _grid_spacing(grid_spacing) {
         _data.resize(resolution.prod());
     }
+    void resize(Vector2i resolution, Vector2d origin, double grid_spacing) {
+        _resolution = resolution;
+        _origin = origin;
+        _grid_spacing = grid_spacing;
+        _data.resize(resolution.prod());
+    }
     const Vector2i &resolution() const { return _resolution; }
     const Vector2d &origin() const { return _origin; }
     const double &grid_spacing() const { return _grid_spacing; }
@@ -63,12 +69,11 @@ template <typename T> class Grid2 {
             }
         }
     };
-    Grid2<T> clone() {
-        Grid2<T> tmp(_resolution, _origin, _grid_spacing);
-        for (int i = 0; i < resolution().prod(); i++) {
-            tmp._data[i] = _data[i];
+    void clone(const Grid2<T> &grid) {
+        resize(grid._resolution, grid._origin, grid._grid_spacing);
+        for (int i = 0; i < _resolution.prod(); i++) {
+            _data[i] = grid._data[i];
         }
-        return tmp;
     }
     template <typename Callback> void foreach (Callback func) {
         for (int i = 0; i < _resolution.x(); i++) {
