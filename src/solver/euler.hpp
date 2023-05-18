@@ -206,9 +206,15 @@ class EulerFluidSolver {
     Vector2d back_trace(const Grid2<double> &velocityu,
                         const Grid2<double> &velocityv, double time_interval,
                         const Vector2d &pt_start) {
-        double vu = velocityu.linear_sample(pt_start);
-        double vv = velocityv.linear_sample(pt_start);
-        return pt_start - time_interval * Vector2d(vu, vv);
+        // double vu = velocityu.linear_sample(pt_start);
+        // double vv = velocityv.linear_sample(pt_start);
+        // return pt_start - time_interval * Vector2d(vu, vv);
+        double vu = mcr_sample(velocityu, pt_start);
+        double vv = mcr_sample(velocityv, pt_start);
+        Vector2d midpoint = pt_start - 0.5 * time_interval * Vector2d(vu, vv);
+        double midvu = mcr_sample(velocityu, midpoint);
+        double midvv = mcr_sample(velocityv, midpoint);
+        return pt_start - time_interval * Vector2d(midvu, midvv);
     }
     void projection() {
         int n = _resolution.prod();

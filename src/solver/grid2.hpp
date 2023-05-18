@@ -25,7 +25,9 @@ template <typename T> class Grid2 {
         idx.x() = (std::min)(resolution().x() - 1, idx.x());
         idx.y() = (std::min)(resolution().y() - 1, idx.y());
     }
+    const T &operator()(size_t i, size_t j) const { return _visit(i, j); }
     T &operator()(size_t i, size_t j) { return _visit(i, j); }
+    const T &operator()(Vector2i idx) const { return _visit(idx.x(), idx.y()); }
     T &operator()(Vector2i idx) { return _visit(idx.x(), idx.y()); }
     Vector2d idx2pos(size_t i, size_t j) {
         return origin() + Vector2d(i * grid_spacing(), j * grid_spacing());
@@ -93,3 +95,55 @@ template <typename T> class Grid2 {
     Vector2d _origin;
     double _grid_spacing;
 };
+
+double monotonic_catmull_rom(const double &f0, const double &f1,
+                             const double &f2, const double &f3, double f) {
+    double d1 = (f2 - f0) / 2;
+    double d2 = (f3 - f1) / 2;
+    double D1 = f2 - f1;
+    if (abs(D1) < 1e-6) {
+        d1 = 0;
+        d2 = 0;
+    }
+    if (D1 * d1 < 0) {
+        d1 = 0;
+    }
+    if (D1 * d2 < 0) {
+        d2 = 0;
+    }
+    double a3 = d1 + d2 - 2 * D1;
+    double a2 = 3 * D1 - 2 * d1 - d2;
+    double a1 = d1;
+    double a0 = f1;
+
+    return a3 * f * f * f + a2 * f * f + a1 * f + a0;
+}
+
+double mcr_sample(const Grid2<double> &grid, const Vector2d &pos) {
+    Vector2d indexd = (pos - grid.origin()) / grid.grid_spacing();
+    Vector2i index0(int(floor(indexd.x())) - 1, int(floor(indexd.y())) - 1);
+    Vector2i index1 = index0 + Vector2i::Ones();
+    Vector2i index2 = index0 + 2 * Vector2i::Ones();
+    Vector2i index3 = index0 + 3 * Vector2i::Ones();
+    indexd -= Vector2d(floor(indexd.x()), floor(indexd.y()));
+    grid.bound(index0);
+    grid.bound(index1);
+    grid.bound(index2);
+    grid.bound(index3);
+    double tmp[4];
+    tmp[0] = monotonic_catmull_rom(
+        grid(index0.x(), index0.y()), grid(index1.x(), index0.y()),
+        grid(index2.x(), index0.y()), grid(index3.x(), index0.y()), indexd.x());
+    tmp[1] = monotonic_catmull_rom(
+        grid(index0.x(), index1.y()), grid(index1.x(), index1.y()),
+        grid(index2.x(), index1.y()), grid(index3.x(), index1.y()), indexd.x());
+    tmp[2] = monotonic_catmull_rom(
+        grid(index0.x(), index2.y()), grid(index1.x(), index2.y()),
+        grid(index2.x(), index2.y()), grid(index3.x(), index2.y()), indexd.x());
+    tmp[3] = monotonic_catmull_rom(
+        grid(index0.x(), index3.y()), grid(index1.x(), index3.y()),
+        grid(index2.x(), index3.y()), grid(index3.x(), index3.y()), indexd.x());
+    double result =
+        monotonic_catmull_rom(tmp[0], tmp[1], tmp[2], tmp[3], indexd.y());
+    return result;
+}
