@@ -17,9 +17,10 @@ class EulerFluidSolver {
                           _grid_spacing);
         _density.resize(_resolution, _origin, _grid_spacing);
         _pixels.resize(_img_width * _img_height);
+        build_cg_solver();
         clear_velocity();
-        for (int i = _resolution.x() * 0.3; i < _resolution.x() * 0.7; i++) {
-            for (int j = _resolution.y() * 0.3; j < _resolution.y() * 0.7;
+        for (int i = _resolution.x() * 0.4; i < _resolution.x() * 0.6; i++) {
+            for (int j = _resolution.y() * 0.4; j < _resolution.y() * 0.6;
                  j++) {
                 _velocityu(i, j) = 1;
             }
@@ -129,6 +130,41 @@ class EulerFluidSolver {
     }
 
   protected:
+    void build_cg_solver() {
+        typedef Eigen::Triplet<double> T;
+        int n = _resolution.prod();
+        _projectoin_matrix.resize(n, n);
+        int offset = _resolution.y();
+        std::vector<T> triple_list;
+
+        int count = 0;
+        for (int i = 0; i < _resolution.x(); i++) {
+            for (int j = 0; j < _resolution.y(); j++) {
+                int coeff = 0;
+                if (i > 0) {
+                    triple_list.push_back(T(count, (i - 1) * offset + j, -1));
+                    coeff += 1;
+                }
+                if (i + 1 < _resolution.x()) {
+                    triple_list.push_back(T(count, (i + 1) * offset + j, -1));
+                    coeff += 1;
+                }
+                if (j > 0) {
+                    triple_list.push_back(T(count, i * offset + j - 1, -1));
+                    coeff += 1;
+                }
+                if (j + 1 < _resolution.y()) {
+                    triple_list.push_back(T(count, i * offset + j + 1, -1));
+                    coeff += 1;
+                }
+                triple_list.push_back(T(count, count, coeff));
+                count++;
+            }
+        }
+        _projectoin_matrix.setFromTriplets(triple_list.begin(),
+                                           triple_list.end());
+        _cg_sovler.compute(_projectoin_matrix);
+    }
     void clear_velocity() {
         _velocityu.fill([](Vector2d pos) { return 0.0; });
         _velocityv.fill([](Vector2d pos) { return 0.0; });
@@ -173,11 +209,8 @@ class EulerFluidSolver {
         return pt_start - time_interval * Vector2d(vu, vv);
     }
     void projection() {
-        typedef Eigen::Triplet<double> T;
         int n = _resolution.prod();
         int offset = _resolution.y();
-        std::vector<T> triple_list;
-        Eigen::SparseMatrix<double> A(n, n);
         Eigen::VectorXd b(n);
         Eigen::VectorXd p(n);
 
@@ -187,41 +220,22 @@ class EulerFluidSolver {
                 b(count) =
                     -_grid_spacing * (_velocityu(i + 1, j) - _velocityu(i, j) +
                                       _velocityv(i, j + 1) - _velocityv(i, j));
-                int coeff = 0;
-                if (i > 0) {
-                    triple_list.push_back(T(count, (i - 1) * offset + j, -1));
-                    coeff += 1;
-                } else {
+                if (i == 0) {
                     b(count) -= _grid_spacing * _velocityu(i, j);
                 }
-                if (i + 1 < _resolution.x()) {
-                    triple_list.push_back(T(count, (i + 1) * offset + j, -1));
-                    coeff += 1;
-                } else {
+                if (i + 1 == _resolution.x()) {
                     b(count) -= -_grid_spacing * _velocityu(i + 1, j);
                 }
-                if (j > 0) {
-                    triple_list.push_back(T(count, i * offset + j - 1, -1));
-                    coeff += 1;
-                } else {
+                if (j == 0) {
                     b(count) -= _grid_spacing * _velocityv(i, j);
                 }
-                if (j + 1 < _resolution.y()) {
-                    triple_list.push_back(T(count, i * offset + j + 1, -1));
-                    coeff += 1;
-                } else {
+                if (j + 1 == _resolution.y()) {
                     b(count) -= -_grid_spacing * _velocityv(i, j + 1);
                 }
-                triple_list.push_back(T(count, count, coeff));
                 count++;
             }
         }
-        A.setFromTriplets(triple_list.begin(), triple_list.end());
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
-                                 Eigen::Lower | Eigen::Upper>
-            cg;
-        cg.compute(A);
-        p = cg.solve(b);
+        p = _cg_sovler.solve(b);
 
         for (int i = 0; i < _velocityu.resolution().x(); i++) {
             for (int j = 0; j < _velocityu.resolution().y(); j++) {
@@ -270,4 +284,8 @@ class EulerFluidSolver {
     Grid2<double> _velocityv;
     Grid2<Vector4d> _density;
     vector<Color> _pixels;
+    Eigen::SparseMatrix<double> _projectoin_matrix;
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                             Eigen::Lower | Eigen::Upper>
+        _cg_sovler;
 };
