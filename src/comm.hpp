@@ -21,5 +21,6 @@ struct ClassicSolverParam {
     double brush_deltay;
     double brush_stength;
     double radius;
+    bool click;
     EditMode mode;
 };
