@@ -2,6 +2,7 @@
 
 #include "solver/common.hpp"
 #include "solver/grid2.hpp"
+#include "solver/kernel2.hpp"
 
 class EulerFluidSolver {
   public:
@@ -278,7 +279,7 @@ class EulerFluidSolver {
     int _substep = 1;
     int _sleep_interval = 0;
 
-    double _time_interval = 1e-3;
+    double _time_interval = 5e-3;
 
     int _level_basex = 12;
     int _level_basey = 9;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "src/common.hpp"
-#include "src/utils.hpp"
+#include "src/comm.hpp"
 #include "raylib.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
