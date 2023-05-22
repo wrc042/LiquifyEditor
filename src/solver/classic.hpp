@@ -91,16 +91,19 @@ class ClassicWarpingSolver {
         }
     }
 
-    void step() { advection(); }
-    void run(const bool &is_closed) {
+    void step() {
+        test();
+        advection();
+    }
+    void run(const bool &is_closed, ClassicSolverParam &solver_param) {
         if (_reset_buffer != NULL) {
             assign_image();
             _reset_buffer(_pixels);
         }
         while (!is_closed) {
-            if (_sleep_interval != 0) {
-                _sleep(_sleep_interval);
-            }
+            double t0, t1;
+            t0 = omp_get_wtime();
+            _param = solver_param;
             step();
             if (_update_buffer != NULL) {
                 static int update_count = 0;
@@ -110,18 +113,32 @@ class ClassicWarpingSolver {
                 }
                 update_count += 1;
             }
+            t1 = omp_get_wtime();
+            if (1 / (t1 - t0) > _target_fps) {
+                _sleep(ceil((1e3 / _target_fps) - (t1 - t0)));
+            }
+            t1 = omp_get_wtime();
+            solver_param.solver_fps = 1 / (t1 - t0);
         }
     }
 
   protected:
+    void test() {
+        if (_param.click) {
+            _density(_density.pos2idx(
+                Vector2d(_param.brush_positionx, _param.brush_positiony))) =
+                Vector4d::Zero();
+        }
+    }
     void advection() {}
 
   private:
     function<void(const vector<Color> &)> _reset_buffer;
     function<void(const vector<Color> &)> _update_buffer;
+    function<void(ClassicSolverParam &)> _solver_param;
 
     int _substep = 1;
-    int _sleep_interval = 0;
+    int _target_fps = 60;
 
     int _level_basex = 12;
     int _level_basey = 9;
@@ -133,4 +150,5 @@ class ClassicWarpingSolver {
     double _grid_spacing;
     Grid2<Vector4d> _density;
     vector<Color> _pixels;
+    ClassicSolverParam _param;
 };

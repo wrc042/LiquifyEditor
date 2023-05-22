@@ -2,7 +2,8 @@
 
 #include "src/common.hpp"
 
-enum EditMode { Trans, ScalingUp, ScalingDown, RotationR, RotationL };
+string EditmodeStr[5]{"Trans", "ScalingUp", "ScalingDown", "RotationR",
+                      "RotationL"};
 
 struct EulerSolverParam {
     double brush_positionx;
@@ -22,5 +23,7 @@ struct ClassicSolverParam {
     double brush_stength;
     double radius;
     bool click;
-    EditMode mode;
+    int editmode;
+
+    double solver_fps;
 };
