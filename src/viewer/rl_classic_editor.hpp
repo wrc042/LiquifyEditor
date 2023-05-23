@@ -98,27 +98,24 @@ class RLClassicEditor : public RLCore {
                  _text_left_padding, _text_height * (++text_height_cnt),
                  _text_font_size, BLACK);
 
-        DrawText(to_string(_brush_click).c_str(), _text_left_padding,
-                 _text_height * (++text_height_cnt), _text_font_size, BLACK);
-
         DrawText(EditmodeStr[_mode].c_str(), _text_left_padding,
                  _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
-        string text_delta = "Delta: ";
-        text_delta += to_string(_brush_delta.x());
-        text_delta += " ";
-        text_delta += to_string(_brush_delta.y());
+        // string text_delta = "Delta: ";
+        // text_delta += to_string(_brush_delta.x());
+        // text_delta += " ";
+        // text_delta += to_string(_brush_delta.y());
 
-        DrawText(text_delta.c_str(), _text_left_padding,
-                 _text_height * (++text_height_cnt), _text_font_size, BLACK);
+        // DrawText(text_delta.c_str(), _text_left_padding,
+        //          _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
-        string text_position = "Position: ";
-        text_position += to_string(_brush_position.x());
-        text_position += " ";
-        text_position += to_string(_brush_position.y());
+        // string text_position = "Position: ";
+        // text_position += to_string(_brush_position.x());
+        // text_position += " ";
+        // text_position += to_string(_brush_position.y());
 
-        DrawText(text_position.c_str(), _text_left_padding,
-                 _text_height * (++text_height_cnt), _text_font_size, BLACK);
+        // DrawText(text_position.c_str(), _text_left_padding,
+        //          _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
         if (GetMouseWheelMove() > 0) {
             _brush_radius *= _brush_scale_ratio;
@@ -153,6 +150,7 @@ class RLClassicEditor : public RLCore {
         _solver_param.brush_deltay = _brush_delta.y();
         _solver_param.brush_stength = _strength;
         _solver_param.radius = _brush_radius / _range.x();
+        _solver_param.max_radius = _brush_radius_max / _range.x();
         _solver_param.click = _brush_click;
         _solver_param.editmode = _mode;
 

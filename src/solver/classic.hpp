@@ -141,59 +141,70 @@ class ClassicWarpingSolver {
             Vector2i idxlow, idxup;
             double radius = _param.radius;
             double radius2 = radius * radius;
+            double strength = _param.brush_stength;
             idxlow =
                 _density.pos2idx(pmouse - radius * 1.05 * Vector2d::Ones());
             idxup = _density.pos2idx(pmouse + radius * 1.05 * Vector2d::Ones());
 
-            // for (int i = idxlow.x(); i < idxup.x(); i++) {
-            //     for (int j = idxlow.y(); j < idxup.y(); j++) {
-            //         Vector2d px = _density.idx2pos(i, j);
-            //         double dx2 = (px - pmouse).squaredNorm();
-            //         if (dx2 < radius2) {
-            //             double fact =
-            //                 (radius2 - dx2) / ((radius2 - dx2) +
-            //                 dmouse.norm());
-            //             fact = fact * fact;
-            //             Vector2d dpos = fact * dmouse;
-            //             Vector2d srcpos = px - dpos;
-            //             _density(i, j) = oldd.linear_sample(srcpos);
-            //         }
-            //     }
-            // }
+            int mode = _param.editmode;
 
-            // for (int i = idxlow.x(); i < idxup.x(); i++) {
-            //     for (int j = idxlow.y(); j < idxup.y(); j++) {
-            //         Vector2d px = _density.idx2pos(i, j);
-            //         double dx2 = (px - pmouse).squaredNorm();
-            //         double dx = (px - pmouse).norm();
-            //         if (dx2 < radius2) {
-            //             double fact = dx / radius - 1;
-            //             fact = fact * fact;
-            //             fact = fact * -0.2;
-            //             fact = (1 - fact) * dx;
-            //             Vector2d dpos = fact * (px - pmouse).normalized();
-            //             Vector2d srcpos = pmouse + dpos;
-            //             _density(i, j) = oldd.linear_sample(srcpos);
-            //         }
-            //     }
-            // }
+            if (mode == Trans) {
+                for (int i = idxlow.x(); i < idxup.x(); i++) {
+                    for (int j = idxlow.y(); j < idxup.y(); j++) {
+                        Vector2d px = _density.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        if (dx2 < radius2) {
+                            double fact = (radius2 - dx2) /
+                                          ((radius2 - dx2) + dmouse.norm());
+                            fact = fact * fact;
+                            fact *= strength * _trans_strength_coeff;
+                            Vector2d dpos =
+                                fact * dmouse * (_param.max_radius / radius);
+                            Vector2d srcpos = px - dpos;
+                            _density(i, j) = oldd.linear_sample(srcpos);
+                        }
+                    }
+                }
+            } else if (mode == ScalingUp || mode == ScalingDown) {
+                int sign = mode == ScalingUp ? 1 : -1;
+                for (int i = idxlow.x(); i < idxup.x(); i++) {
+                    for (int j = idxlow.y(); j < idxup.y(); j++) {
+                        Vector2d px = _density.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = dx / radius - 1;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _scale_strength_coeff;
+                            fact = (1 - fact) * dx;
+                            Vector2d dpos = fact * (px - pmouse).normalized();
+                            Vector2d srcpos = pmouse + dpos;
+                            _density(i, j) = oldd.linear_sample(srcpos);
+                        }
+                    }
+                }
+            } else if (mode == RotationR || mode == RotationL) {
+                int sign = mode == RotationR ? 1 : -1;
+                for (int i = idxlow.x(); i < idxup.x(); i++) {
+                    for (int j = idxlow.y(); j < idxup.y(); j++) {
+                        Vector2d px = _density.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = 1 - dx2 / radius2;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _rotate_strength_coeff;
 
-            for (int i = idxlow.x(); i < idxup.x(); i++) {
-                for (int j = idxlow.y(); j < idxup.y(); j++) {
-                    Vector2d px = _density.idx2pos(i, j);
-                    double dx2 = (px - pmouse).squaredNorm();
-                    double dx = (px - pmouse).norm();
-                    if (dx2 < radius2) {
-                        double fact = 1 - dx2 / radius2;
-                        fact = fact * fact;
-                        fact = fact * 0.5;
-
-                        double theta =
-                            atan2((px - pmouse).x(), (px - pmouse).y());
-                        theta += fact;
-                        Vector2d dpos = Vector2d(sin(theta), cos(theta)) * dx;
-                        Vector2d srcpos = pmouse + dpos;
-                        _density(i, j) = oldd.linear_sample(srcpos);
+                            double theta =
+                                atan2((px - pmouse).x(), (px - pmouse).y());
+                            theta += fact;
+                            Vector2d dpos =
+                                Vector2d(sin(theta), cos(theta)) * dx;
+                            Vector2d srcpos = pmouse + dpos;
+                            _density(i, j) = oldd.linear_sample(srcpos);
+                        }
                     }
                 }
             }
@@ -212,6 +223,10 @@ class ClassicWarpingSolver {
     int _level_basey = 9;
     int _img_width = 1200;
     int _img_height = 900;
+
+    double _trans_strength_coeff = 0.05;
+    double _scale_strength_coeff = 0.002;
+    double _rotate_strength_coeff = 0.002;
 
     Vector2i _resolution;
     Vector2d _origin;
