@@ -1,5 +1,5 @@
 {
-    "type": "classic",
+    "type": "euler",
     "level": 100,
     "levelsim": 15,
     "parallel_advection": true,
