@@ -1,3 +1,6 @@
+#include "IO/config.hpp"
+
+#include "viewer/image.hpp"
 #include "viewer/rl_classic_editor.hpp"
 #include "viewer/rl_euler_editor.hpp"
 
@@ -8,31 +11,15 @@
 int main() {
     omp_set_nested(true);
 
+    auto config = IO::load_config("config.json");
+
     RLClassicEditor editor;
     editor.init("liquify editor");
-    vector<Color> pixels(1200 * 900);
-    for (int i = 0; i < 1200; i++) {
-        for (int j = 0; j < 900; j++) {
-            pixels[i + j * 1200].a = 255;
-            pixels[i + j * 1200].r =
-                255 * ((((i / 50) % 2) + ((j / 50) % 2)) % 2);
-            pixels[i + j * 1200].g =
-                255 * ((((i / 50) % 2) + ((j / 50) % 2)) % 2);
-            pixels[i + j * 1200].b =
-                255 * ((((i / 50) % 2) + ((j / 50) % 2)) % 2);
-        }
-    }
-    // editor.reset_buffer(pixels);
-    // editor.run();
-    // Image image = LoadImage("imgs/test.png");
-    // Color *pixels_ = LoadImageColors(image);
-    // for (int i = 0; i < pixels.size(); i++) {
-    //     pixels[i] = pixels_[i];
-    // }
+    vector<Color> origin_pixels;
+    ImageLoader(config["image"].asString()).load(origin_pixels);
 
-    int level = 100;
-    ClassicWarpingSolver solver(level);
-    solver.assign_field(pixels);
+    ClassicWarpingSolver solver(config["level"].asInt());
+    solver.assign_field(origin_pixels);
     solver.set_reset_buffer(
         [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });
     solver.set_update_buffer(
