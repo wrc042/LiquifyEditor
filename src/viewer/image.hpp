@@ -14,6 +14,9 @@ class ImageLoader {
             load_block(pixels);
         } else if (_name.substr(_name.size() - 4, _name.size()) == ".png") {
             load_image(pixels);
+        } else {
+            cout << "Other image formats currently not support." << endl;
+            load_block(pixels);
         }
     }
 
