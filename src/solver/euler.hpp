@@ -2,7 +2,6 @@
 
 #include "solver/common.hpp"
 #include "solver/grid2.hpp"
-#include "solver/kernel2.hpp"
 
 class EulerFluidSolver {
   public:

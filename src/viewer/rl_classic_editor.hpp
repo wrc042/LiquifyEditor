@@ -152,7 +152,7 @@ class RLClassicEditor : public RLCore {
         _solver_param.brush_deltax = _brush_delta.x();
         _solver_param.brush_deltay = _brush_delta.y();
         _solver_param.brush_stength = _strength;
-        _solver_param.radius = _brush_radius;
+        _solver_param.radius = _brush_radius / _range.x();
         _solver_param.click = _brush_click;
         _solver_param.editmode = _mode;
 

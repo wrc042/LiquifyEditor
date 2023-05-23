@@ -30,7 +30,7 @@ int main() {
     //     pixels[i] = pixels_[i];
     // }
 
-    int level = 20;
+    int level = 100;
     ClassicWarpingSolver solver(level);
     solver.assign_field(pixels);
     solver.set_reset_buffer(

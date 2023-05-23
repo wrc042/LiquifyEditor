@@ -2,7 +2,6 @@
 
 #include "solver/common.hpp"
 #include "solver/grid2.hpp"
-#include "solver/kernel2.hpp"
 
 class ClassicWarpingSolver {
   public:
@@ -124,13 +123,44 @@ class ClassicWarpingSolver {
 
   protected:
     void test() {
+        // if (_param.click) {
+        //     _density(_density.pos2idx(
+        //         Vector2d(_param.brush_positionx, _param.brush_positiony))) =
+        //         255 * Vector4d::Ones();
+        // }
+    }
+    void advection() {
         if (_param.click) {
-            _density(_density.pos2idx(
-                Vector2d(_param.brush_positionx, _param.brush_positiony))) =
-                Vector4d::Zero();
+            Grid2<Vector4d> oldd;
+            oldd.clone(_density);
+
+            Vector2d dmouse =
+                Vector2d(_param.brush_deltax, _param.brush_deltay);
+            Vector2d pmouse =
+                Vector2d(_param.brush_positionx, _param.brush_positiony);
+            Vector2i idxlow, idxup;
+            double radius = _param.radius;
+            double radius2 = radius * radius;
+            idxlow =
+                _density.pos2idx(pmouse - radius * 1.05 * Vector2d::Ones());
+            idxup = _density.pos2idx(pmouse + radius * 1.05 * Vector2d::Ones());
+
+            for (int i = idxlow.x(); i < idxup.x(); i++) {
+                for (int j = idxlow.y(); j < idxup.y(); j++) {
+                    Vector2d px = _density.idx2pos(i, j);
+                    double dx2 = (px - pmouse).squaredNorm();
+                    if (dx2 < radius2) {
+                        double fact =
+                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
+                        fact = fact * fact;
+                        Vector2d dpos = fact * dmouse;
+                        Vector2d srcpos = px - dpos;
+                        _density(i, j) = oldd.linear_sample(srcpos);
+                    }
+                }
+            }
         }
     }
-    void advection() {}
 
   private:
     function<void(const vector<Color> &)> _reset_buffer;
