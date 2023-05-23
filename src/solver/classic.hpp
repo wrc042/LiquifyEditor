@@ -218,7 +218,6 @@ class ClassicWarpingSolver {
   private:
     function<void(const vector<Color> &)> _reset_buffer;
     function<void(const vector<Color> &)> _update_buffer;
-    function<void(ClassicSolverParam &)> _solver_param;
 
     int _substep = 1;
     int _target_fps = 60;

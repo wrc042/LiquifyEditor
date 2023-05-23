@@ -1,6 +1,8 @@
 #pragma once
 #include "viewer/rlcore.hpp"
 
+#include "IO/uid.hpp"
+
 class RLEulerEditor : public RLCore {
   public:
     void reset_buffer(const vector<Color> &pixels) { reset_buffer(&pixels[0]); }
@@ -33,6 +35,7 @@ class RLEulerEditor : public RLCore {
         set_bufnum(bufnum, is_reset);
     }
     const bool &is_closed() { return _is_closed; }
+    EulerSolverParam &solver_param() { return _solver_param; }
 
   protected:
     void on_init() {
@@ -60,49 +63,71 @@ class RLEulerEditor : public RLCore {
     void init_callback(int bufnum) {
         DrawText("Initializing...", 700, 450, 30, BLACK);
     };
+    void save_image(int bufnum) {
+        if (!fs::exists(_saving_dir)) {
+            fs::create_directories(_saving_dir);
+        }
+        string name = IO::gen_rid();
+        string path = _saving_dir + name + ".png";
+        Image image = LoadImageFromTexture(_textures[bufnum]);
+        ExportImage(image, path.c_str());
+        UnloadImage(image);
+    }
     void update_callback(int bufnum) {
-        DrawRectangle(_origin.x(), _origin.y(), _range.x(), _range.y(), BLACK);
         DrawTexture(_textures[bufnum], _origin.x(), _origin.y(), WHITE);
 
         int text_height_cnt = 0;
 
         Vector2 brush_position = GetMousePosition();
-        brush_position.x = (brush_position.x - _origin.x()) / _range.x();
-        brush_position.x = (std::max)(brush_position.x, 0.f);
-        brush_position.x = (std::min)(brush_position.x, 1.f);
-        brush_position.y = (brush_position.y - _origin.y()) / _range.y();
-        brush_position.y = (std::max)(brush_position.y, 0.f);
-        brush_position.y = (std::min)(brush_position.y, 1.f);
+        Vector2 brush_delta = GetMouseDelta();
+        _brush_click = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
-        _brush_delta.x() = brush_position.x - _last_brush_position.x();
-        _brush_delta.y() = brush_position.y - _last_brush_position.y();
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            _mode = (_mode + 1) % 5;
+        }
 
+        double dx = brush_position.x - _origin.x();
+        double dy = brush_position.y - _origin.y();
+        _brush_position.x() = dx / _range.x();
+        _brush_position.y() = dy / _range.x();
+        if (dx < 0 || dx > _range.x()) {
+            _brush_click = false;
+            _brush_position.x() = 0;
+        }
+
+        if (dy < 0 || dy > _range.y()) {
+            _brush_click = false;
+            _brush_position.y() = 0;
+        }
+
+        _brush_delta.x() = brush_delta.x / _range.x();
+        _brush_delta.y() = brush_delta.y / _range.x();
         if (_brush_delta.norm() > _brush_delta_thres) {
             _brush_delta = Vector2d::Zero();
         }
 
-        if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            _brush_delta = Vector2d::Zero();
-        }
+        DrawText(TextFormat("Solver FPS: %0.2f", _solver_fps),
+                 _text_left_padding, _text_height * (++text_height_cnt),
+                 _text_font_size, BLACK);
 
-        string text_delta = "Delta: ";
-        text_delta += to_string(_brush_delta.x());
-        text_delta += " ";
-        text_delta += to_string(_brush_delta.y());
-
-        DrawText(text_delta.c_str(), _text_left_padding,
+        DrawText(EditmodeStr[_mode].c_str(), _text_left_padding,
                  _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
-        _last_brush_position.x() = brush_position.x;
-        _last_brush_position.y() = brush_position.y;
+        // string text_delta = "Delta: ";
+        // text_delta += to_string(_brush_delta.x());
+        // text_delta += " ";
+        // text_delta += to_string(_brush_delta.y());
 
-        string text_position = "Position: ";
-        text_position += to_string(brush_position.x);
-        text_position += " ";
-        text_position += to_string(brush_position.y);
+        // DrawText(text_delta.c_str(), _text_left_padding,
+        //          _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
-        DrawText(text_position.c_str(), _text_left_padding,
-                 _text_height * (++text_height_cnt), _text_font_size, BLACK);
+        // string text_position = "Position: ";
+        // text_position += to_string(_brush_position.x());
+        // text_position += " ";
+        // text_position += to_string(_brush_position.y());
+
+        // DrawText(text_position.c_str(), _text_left_padding,
+        //          _text_height * (++text_height_cnt), _text_font_size, BLACK);
 
         if (GetMouseWheelMove() > 0) {
             _brush_radius *= _brush_scale_ratio;
@@ -112,8 +137,8 @@ class RLEulerEditor : public RLCore {
         _brush_radius = (std::max)(_brush_radius, _brush_radius_min);
         _brush_radius = (std::min)(_brush_radius, _brush_radius_max);
 
-        DrawCircleLines(_last_brush_position.x() * _range.x() + _origin.x(),
-                        _last_brush_position.y() * _range.y() + _origin.y(),
+        DrawCircleLines(_brush_position.x() * _range.x() + _origin.x(),
+                        _brush_position.y() * _range.x() + _origin.y(),
                         _brush_radius, WHITE);
 
         string text_radius = "Raduis: ";
@@ -128,28 +153,48 @@ class RLEulerEditor : public RLCore {
                       NULL, TextFormat("Strength: %0.2f", _strength), _strength,
                       _strength_min, _strength_max);
 
-        _dampling =
+        _damping =
             GuiSlider(Rectangle{float(_text_left_padding),
                                 float(_text_height * (++text_height_cnt)),
                                 float(_slider_width), float(_slider_height)},
-                      NULL, TextFormat("Damping: %0.2e", _dampling), _dampling,
-                      _dampling_min, _dampling_max);
+                      NULL, TextFormat("Damping: %0.2f", _damping), _damping,
+                      _damping_min, _damping_max);
+
+        _reset =
+            GuiButton(Rectangle{float(_text_left_padding),
+                                float(_text_height * (++text_height_cnt)),
+                                float(_slider_width), float(_slider_height)},
+                      "reset");
+
+        if (GuiButton(Rectangle{float(_text_left_padding),
+                                float(_text_height * (++text_height_cnt)),
+                                float(_slider_width), float(_slider_height)},
+                      "save")) {
+            save_image(bufnum);
+        }
+        update_sovler_param();
     };
 
     void update_sovler_param() {
-        solver_param.brush_positionx = _last_brush_position.x();
-        solver_param.brush_positiony = _last_brush_position.y();
-        solver_param.brush_deltax = _brush_delta.x();
-        solver_param.brush_deltay = _brush_delta.y();
-        solver_param.brush_stength = _strength;
-        solver_param.damping = _dampling;
-        solver_param.radius = _brush_radius;
+        _solver_param.brush_positionx = _brush_position.x();
+        _solver_param.brush_positiony = _brush_position.y();
+        _solver_param.brush_deltax = _brush_delta.x();
+        _solver_param.brush_deltay = _brush_delta.y();
+        _solver_param.brush_stength = _strength;
+        _solver_param.damping = _damping;
+        _solver_param.radius = _brush_radius / _range.x();
+        _solver_param.max_radius = _brush_radius_max / _range.x();
+        _solver_param.click = _brush_click;
+        _solver_param.editmode = _mode;
+        _solver_param.reset = _reset;
+
+        _solver_fps = _solver_param.solver_fps;
     }
 
   private:
-    Vector2d _last_brush_position = Vector2d(0, 0);
+    Vector2d _brush_position = Vector2d(0, 0);
     Vector2d _brush_delta = Vector2d(0, 0);
-    double _brush_delta_thres = 30;
+    double _brush_delta_thres = 0.3;
     Vector2i _origin = Vector2i(400, 0);
     Vector2i _range = Vector2i(1200, 900);
 
@@ -162,19 +207,28 @@ class RLEulerEditor : public RLCore {
     double _brush_radius = 50;
     double _brush_scale_ratio = 1.2;
     double _brush_radius_min = 20;
-    double _brush_radius_max = 100;
+    double _brush_radius_max = 150;
+    bool _brush_click = false;
 
     double _strength = 50;
     double _strength_min = 0;
     double _strength_max = 100;
 
-    double _dampling = 0;
-    double _dampling_min = 0;
-    double _dampling_max = 1e-3;
+    double _damping = 0;
+    double _damping_min = 0;
+    double _damping_max = 100;
 
-    EulerSolverParam solver_param;
+    bool _reset = false;
+
+    double _solver_fps = 0;
+
+    int _mode = 0;
+
+    EulerSolverParam _solver_param;
 
     array<Texture, 2> _textures;
     array<Image, 2> _images;
     array<vector<Color>, 2> _pixel_buffers;
+
+    string _saving_dir = "output/";
 };

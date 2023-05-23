@@ -17,14 +17,9 @@ class EulerFluidSolver {
                           _grid_spacing);
         _density.resize(_resolution, _origin, _grid_spacing);
         _pixels.resize(_img_width * _img_height);
+        _origin_pixels.resize(_img_width * _img_height);
         build_solver();
         clear_velocity();
-        for (int i = _resolution.x() * 0.4; i < _resolution.x() * 0.6; i++) {
-            for (int j = _resolution.y() * 0.4; j < _resolution.y() * 0.6;
-                 j++) {
-                _velocityu(i, j) = 1;
-            }
-        }
     }
     void set_reset_buffer(const function<void(const vector<Color> &)> &func) {
         _reset_buffer = func;
@@ -35,12 +30,13 @@ class EulerFluidSolver {
     void init_image(const vector<Color> &pixels) {
         for (int i = 0; i < _img_width; i++) {
             for (int j = 0; j < _img_height; j++) {
-                _pixels[i + j * _img_width].a = pixels[i + j * _img_width].a;
-                _pixels[i + j * _img_width].r = pixels[i + j * _img_width].r;
-                _pixels[i + j * _img_width].g = pixels[i + j * _img_width].g;
-                _pixels[i + j * _img_width].b = pixels[i + j * _img_width].b;
+                _pixels[i + j * _img_width] = pixels[i + j * _img_width];
+                _origin_pixels[i + j * _img_width] = pixels[i + j * _img_width];
             }
         }
+        assign_field(pixels);
+    }
+    void assign_field(const vector<Color> &pixels) {
         _density.fill([&](Vector2d pos) {
             auto lerp = [](double low, double x, Vector4d v_low,
                            Vector4d v_high) {
@@ -105,18 +101,20 @@ class EulerFluidSolver {
     }
 
     void step() {
-        advection(_time_interval);
+        update();
+        damp_velocity(_param.damping);
         projection();
+        advection(_time_interval);
     }
-    void run(const bool &is_closed) {
+    void run(const bool &is_closed, EulerSolverParam &solver_param) {
         if (_reset_buffer != NULL) {
             assign_image();
             _reset_buffer(_pixels);
         }
         while (!is_closed) {
-            if (_sleep_interval != 0) {
-                _sleep(_sleep_interval);
-            }
+            double t0, t1;
+            t0 = omp_get_wtime();
+            _param = solver_param;
             step();
             if (_update_buffer != NULL) {
                 static int update_count = 0;
@@ -126,10 +124,25 @@ class EulerFluidSolver {
                 }
                 update_count += 1;
             }
+            t1 = omp_get_wtime();
+            if (1 / (t1 - t0) > _target_fps) {
+                _sleep(ceil((1e3 / _target_fps) - (t1 - t0)));
+            }
+            t1 = omp_get_wtime();
+            solver_param.solver_fps = 1 / (t1 - t0);
         }
     }
 
   protected:
+    void reset_image() {
+        for (int i = 0; i < _img_width; i++) {
+            for (int j = 0; j < _img_height; j++) {
+                _pixels[i + j * _img_width] =
+                    _origin_pixels[i + j * _img_width];
+            }
+        }
+        clear_velocity();
+    }
     void build_solver() {
         typedef Eigen::Triplet<double> T;
         int n = _resolution.prod();
@@ -171,6 +184,74 @@ class EulerFluidSolver {
         _velocityu.fill([](Vector2d pos) { return 0.0; });
         _velocityv.fill([](Vector2d pos) { return 0.0; });
     }
+    void damp_velocity(double damping) {
+        _velocityu.foreach ([&](int i, int j) {
+            _velocityu(i, j) *= exp(-damping * _time_interval);
+        });
+        _velocityv.foreach ([&](int i, int j) {
+            _velocityv(i, j) *= exp(-damping * _time_interval);
+        });
+    }
+    void update() {
+        if (_param.reset) {
+            reset_image();
+            assign_field(_origin_pixels);
+        }
+        if (_param.click) {
+            Vector2d dmouse =
+                Vector2d(_param.brush_deltax, _param.brush_deltay);
+            Vector2d pmouse =
+                Vector2d(_param.brush_positionx, _param.brush_positiony);
+            Vector2i idxlowu, idxupu;
+            Vector2i idxlowv, idxupv;
+            double radius = _param.radius;
+            double radius2 = radius * radius;
+            double strength = _param.brush_stength;
+            idxlowu =
+                _velocityu.pos2idx(pmouse - radius * 1.05 * Vector2d::Ones());
+            idxupu =
+                _velocityu.pos2idx(pmouse + radius * 1.05 * Vector2d::Ones());
+            idxlowv =
+                _velocityv.pos2idx(pmouse - radius * 1.05 * Vector2d::Ones());
+            idxupv =
+                _velocityv.pos2idx(pmouse + radius * 1.05 * Vector2d::Ones());
+
+            int mode = _param.editmode;
+
+            for (int i = idxlowu.x(); i < idxupu.x(); i++) {
+                for (int j = idxlowu.y(); j < idxupu.y(); j++) {
+                    Vector2d px = _velocityu.idx2pos(i, j);
+                    double dx2 = (px - pmouse).squaredNorm();
+                    if (dx2 < radius2) {
+                        double fact =
+                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
+                        fact = fact * fact;
+                        fact *= strength * _trans_strength_coeff;
+                        Vector2d dpos =
+                            fact * dmouse * (_param.max_radius / radius);
+                        Vector2d velocity = dpos / _time_interval;
+                        _velocityu(i, j) += velocity.x();
+                    }
+                }
+            }
+            for (int i = idxlowv.x(); i < idxupv.x(); i++) {
+                for (int j = idxlowv.y(); j < idxupv.y(); j++) {
+                    Vector2d px = _velocityv.idx2pos(i, j);
+                    double dx2 = (px - pmouse).squaredNorm();
+                    if (dx2 < radius2) {
+                        double fact =
+                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
+                        fact = fact * fact;
+                        fact *= strength * _trans_strength_coeff;
+                        Vector2d dpos =
+                            fact * dmouse * (_param.max_radius / radius);
+                        Vector2d velocity = dpos / _time_interval;
+                        _velocityv(i, j) += velocity.y();
+                    }
+                }
+            }
+        }
+    };
     void advection(double time_interval) {
         Grid2<double> oldu;
         oldu.clone(_velocityu);
@@ -206,15 +287,15 @@ class EulerFluidSolver {
     Vector2d back_trace(const Grid2<double> &velocityu,
                         const Grid2<double> &velocityv, double time_interval,
                         const Vector2d &pt_start) {
-        // double vu = velocityu.linear_sample(pt_start);
-        // double vv = velocityv.linear_sample(pt_start);
-        // return pt_start - time_interval * Vector2d(vu, vv);
-        double vu = mcr_sample(velocityu, pt_start);
-        double vv = mcr_sample(velocityv, pt_start);
-        Vector2d midpoint = pt_start - 0.5 * time_interval * Vector2d(vu, vv);
-        double midvu = mcr_sample(velocityu, midpoint);
-        double midvv = mcr_sample(velocityv, midpoint);
-        return pt_start - time_interval * Vector2d(midvu, midvv);
+        double vu = velocityu.linear_sample(pt_start);
+        double vv = velocityv.linear_sample(pt_start);
+        return pt_start - time_interval * Vector2d(vu, vv);
+        // double vu = mcr_sample(velocityu, pt_start);
+        // double vv = mcr_sample(velocityv, pt_start);
+        // Vector2d midpoint = pt_start - 0.5 * time_interval * Vector2d(vu, vv);
+        // double midvu = mcr_sample(velocityu, midpoint);
+        // double midvv = mcr_sample(velocityv, midpoint);
+        // return pt_start - time_interval * Vector2d(midvu, midvv);
     }
     void projection() {
         int n = _resolution.prod();
@@ -276,7 +357,7 @@ class EulerFluidSolver {
     function<void(const vector<Color> &)> _update_buffer;
 
     int _substep = 1;
-    int _sleep_interval = 0;
+    int _target_fps = 60;
 
     double _time_interval = 5e-3;
 
@@ -285,6 +366,12 @@ class EulerFluidSolver {
     int _img_width = 1200;
     int _img_height = 900;
 
+    double _trans_strength_coeff = 0.05;
+    double _scale_strength_coeff = 0.002;
+    double _rotate_strength_coeff = 0.002;
+
+    double _damping = 0;
+
     Vector2i _resolution;
     Vector2d _origin;
     double _grid_spacing;
@@ -292,6 +379,7 @@ class EulerFluidSolver {
     Grid2<double> _velocityv;
     Grid2<Vector4d> _density;
     vector<Color> _pixels;
+    vector<Color> _origin_pixels;
     Eigen::SparseMatrix<double> _projectoin_matrix;
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
                              Eigen::Lower | Eigen::Upper>
@@ -302,4 +390,6 @@ class EulerFluidSolver {
         _icpcg_sovler;
     Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>>
         _lu_solver;
+
+    EulerSolverParam _param;
 };

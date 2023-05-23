@@ -13,12 +13,12 @@ int main() {
 
     auto config = IO::load_config("config.json");
 
-    RLClassicEditor editor;
+    RLEulerEditor editor;
     editor.init("liquify editor");
     vector<Color> origin_pixels;
     ImageLoader(config["image"].asString()).load(origin_pixels);
 
-    ClassicWarpingSolver solver(config["level"].asInt());
+    EulerFluidSolver solver(config["level"].asInt());
     solver.init_image(origin_pixels);
     solver.set_reset_buffer(
         [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });
@@ -26,7 +26,7 @@ int main() {
         [&](const vector<Color> &pixels) { editor.update_buffer(pixels); });
 
     const bool &is_closed = editor.is_closed();
-    ClassicSolverParam &solver_param = editor.solver_param();
+    EulerSolverParam &solver_param = editor.solver_param();
 #pragma omp parallel sections num_threads(2) default(shared)
     {
 #pragma omp section
