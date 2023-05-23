@@ -222,35 +222,117 @@ class EulerFluidSolver {
 
             int mode = _param.editmode;
 
-            for (int i = idxlowu.x(); i < idxupu.x(); i++) {
-                for (int j = idxlowu.y(); j < idxupu.y(); j++) {
-                    Vector2d px = _velocityu.idx2pos(i, j);
-                    double dx2 = (px - pmouse).squaredNorm();
-                    if (dx2 < radius2) {
-                        double fact =
-                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
-                        fact = fact * fact;
-                        fact *= strength * _trans_strength_coeff;
-                        Vector2d dpos =
-                            fact * dmouse * (_param.max_radius / radius);
-                        Vector2d velocity = dpos / _time_interval;
-                        _velocityu(i, j) += velocity.x();
+            if (mode == Trans) {
+                for (int i = idxlowu.x(); i < idxupu.x(); i++) {
+                    for (int j = idxlowu.y(); j < idxupu.y(); j++) {
+                        Vector2d px = _velocityu.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        if (dx2 < radius2) {
+                            double fact = (radius2 - dx2) /
+                                          ((radius2 - dx2) + dmouse.norm());
+                            fact = fact * fact;
+                            fact *= strength * _trans_strength_coeff;
+                            Vector2d dpos =
+                                fact * dmouse * (_param.max_radius / radius);
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityu(i, j) += velocity.x();
+                        }
                     }
                 }
-            }
-            for (int i = idxlowv.x(); i < idxupv.x(); i++) {
-                for (int j = idxlowv.y(); j < idxupv.y(); j++) {
-                    Vector2d px = _velocityv.idx2pos(i, j);
-                    double dx2 = (px - pmouse).squaredNorm();
-                    if (dx2 < radius2) {
-                        double fact =
-                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
-                        fact = fact * fact;
-                        fact *= strength * _trans_strength_coeff;
-                        Vector2d dpos =
-                            fact * dmouse * (_param.max_radius / radius);
-                        Vector2d velocity = dpos / _time_interval;
-                        _velocityv(i, j) += velocity.y();
+                for (int i = idxlowv.x(); i < idxupv.x(); i++) {
+                    for (int j = idxlowv.y(); j < idxupv.y(); j++) {
+                        Vector2d px = _velocityv.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        if (dx2 < radius2) {
+                            double fact = (radius2 - dx2) /
+                                          ((radius2 - dx2) + dmouse.norm());
+                            fact = fact * fact;
+                            fact *= strength * _trans_strength_coeff;
+                            Vector2d dpos =
+                                fact * dmouse * (_param.max_radius / radius);
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityv(i, j) += velocity.y();
+                        }
+                    }
+                }
+            } else if (mode == ScalingUp || mode == ScalingDown) {
+                int sign = mode == ScalingUp ? 1 : -1;
+                for (int i = idxlowu.x(); i < idxupu.x(); i++) {
+                    for (int j = idxlowu.y(); j < idxupu.y(); j++) {
+                        Vector2d px = _velocityu.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = dx / radius - 1;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _scale_strength_coeff;
+                            fact = (1 - fact) * dx;
+                            Vector2d dpos = fact * (px - pmouse).normalized();
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityu(i, j) += velocity.x();
+                        }
+                    }
+                }
+                for (int i = idxlowv.x(); i < idxupv.x(); i++) {
+                    for (int j = idxlowv.y(); j < idxupv.y(); j++) {
+                        Vector2d px = _velocityv.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = dx / radius - 1;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _scale_strength_coeff;
+                            fact = (1 - fact) * dx;
+                            Vector2d dpos = fact * (px - pmouse).normalized();
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityv(i, j) += velocity.y();
+                        }
+                    }
+                }
+            } else if (mode == RotationR || mode == RotationL) {
+                int sign = mode == RotationR ? 1 : -1;
+                for (int i = idxlowu.x(); i < idxupu.x(); i++) {
+                    for (int j = idxlowu.y(); j < idxupu.y(); j++) {
+                        Vector2d px = _velocityu.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = 1 - dx2 / radius2;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _rotate_strength_coeff;
+
+                            double theta =
+                                atan2((px - pmouse).x(), (px - pmouse).y());
+                            theta += fact;
+                            Vector2d dpos =
+                                Vector2d(sin(theta), cos(theta)) * dx;
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityu(i, j) += velocity.x();
+                        }
+                    }
+                }
+                for (int i = idxlowv.x(); i < idxupv.x(); i++) {
+                    for (int j = idxlowv.y(); j < idxupv.y(); j++) {
+                        Vector2d px = _velocityv.idx2pos(i, j);
+                        double dx2 = (px - pmouse).squaredNorm();
+                        double dx = (px - pmouse).norm();
+                        if (dx2 < radius2) {
+                            double fact = 1 - dx2 / radius2;
+                            fact = fact * fact;
+                            fact =
+                                fact * sign * strength * _rotate_strength_coeff;
+
+                            double theta =
+                                atan2((px - pmouse).x(), (px - pmouse).y());
+                            theta += fact;
+                            Vector2d dpos =
+                                Vector2d(sin(theta), cos(theta)) * dx;
+                            Vector2d velocity = dpos / _time_interval;
+                            _velocityv(i, j) += velocity.x();
+                        }
                     }
                 }
             }
