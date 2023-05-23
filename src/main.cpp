@@ -19,7 +19,7 @@ int main() {
     ImageLoader(config["image"].asString()).load(origin_pixels);
 
     ClassicWarpingSolver solver(config["level"].asInt());
-    solver.assign_field(origin_pixels);
+    solver.init_image(origin_pixels);
     solver.set_reset_buffer(
         [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });
     solver.set_update_buffer(

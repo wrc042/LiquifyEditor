@@ -140,6 +140,12 @@ class RLClassicEditor : public RLCore {
                                 float(_slider_width), float(_slider_height)},
                       NULL, TextFormat("Strength: %0.2f", _strength), _strength,
                       _strength_min, _strength_max);
+
+        _reset =
+            GuiButton(Rectangle{float(_text_left_padding),
+                                float(_text_height * (++text_height_cnt)),
+                                float(_slider_width), float(_slider_height)},
+                      "reset");
         update_sovler_param();
     };
 
@@ -153,6 +159,7 @@ class RLClassicEditor : public RLCore {
         _solver_param.max_radius = _brush_radius_max / _range.x();
         _solver_param.click = _brush_click;
         _solver_param.editmode = _mode;
+        _solver_param.reset = _reset;
 
         _solver_fps = _solver_param.solver_fps;
     }
@@ -179,6 +186,8 @@ class RLClassicEditor : public RLCore {
     double _strength = 50;
     double _strength_min = 0;
     double _strength_max = 100;
+
+    bool _reset = false;
 
     double _solver_fps = 0;
 

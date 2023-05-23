@@ -1,5 +1,6 @@
 {
     "type": "classic",
     "level": 100,
-    "image": "imgs/wallpaper/02.png"
+    "image": "imgs/wallpaper/00.png",
+    "output": "output"
 }

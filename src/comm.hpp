@@ -26,6 +26,7 @@ struct ClassicSolverParam {
     double max_radius;
     bool click;
     int editmode;
+    bool reset;
 
     double solver_fps;
 };

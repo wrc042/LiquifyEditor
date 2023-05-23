@@ -11,6 +11,7 @@ class ClassicWarpingSolver {
         _grid_spacing = 1. / (_resolution.x() - 1);
         _density.resize(_resolution, _origin, _grid_spacing);
         _pixels.resize(_img_width * _img_height);
+        _origin_pixels.resize(_img_width * _img_height);
     }
     void set_reset_buffer(const function<void(const vector<Color> &)> &func) {
         _reset_buffer = func;
@@ -18,15 +19,16 @@ class ClassicWarpingSolver {
     void set_update_buffer(const function<void(const vector<Color> &)> &func) {
         _update_buffer = func;
     }
-    void assign_field(const vector<Color> &pixels) {
+    void init_image(const vector<Color> &pixels) {
         for (int i = 0; i < _img_width; i++) {
             for (int j = 0; j < _img_height; j++) {
-                _pixels[i + j * _img_width].a = pixels[i + j * _img_width].a;
-                _pixels[i + j * _img_width].r = pixels[i + j * _img_width].r;
-                _pixels[i + j * _img_width].g = pixels[i + j * _img_width].g;
-                _pixels[i + j * _img_width].b = pixels[i + j * _img_width].b;
+                _pixels[i + j * _img_width] = pixels[i + j * _img_width];
+                _origin_pixels[i + j * _img_width] = pixels[i + j * _img_width];
             }
         }
+        assign_field(pixels);
+    }
+    void assign_field(const vector<Color> &pixels) {
         _density.fill([&](Vector2d pos) {
             auto lerp = [](double low, double x, Vector4d v_low,
                            Vector4d v_high) {
@@ -90,10 +92,7 @@ class ClassicWarpingSolver {
         }
     }
 
-    void step() {
-        test();
-        advection();
-    }
+    void step() { advection(); }
     void run(const bool &is_closed, ClassicSolverParam &solver_param) {
         if (_reset_buffer != NULL) {
             assign_image();
@@ -122,14 +121,19 @@ class ClassicWarpingSolver {
     }
 
   protected:
-    void test() {
-        // if (_param.click) {
-        //     _density(_density.pos2idx(
-        //         Vector2d(_param.brush_positionx, _param.brush_positiony))) =
-        //         255 * Vector4d::Ones();
-        // }
+    void reset_image() {
+        for (int i = 0; i < _img_width; i++) {
+            for (int j = 0; j < _img_height; j++) {
+                _pixels[i + j * _img_width] =
+                    _origin_pixels[i + j * _img_width];
+            }
+        }
     }
     void advection() {
+        if (_param.reset) {
+            reset_image();
+            assign_field(_origin_pixels);
+        }
         if (_param.click) {
             Grid2<Vector4d> oldd;
             oldd.clone(_density);
@@ -233,5 +237,6 @@ class ClassicWarpingSolver {
     double _grid_spacing;
     Grid2<Vector4d> _density;
     vector<Color> _pixels;
+    vector<Color> _origin_pixels;
     ClassicSolverParam _param;
 };

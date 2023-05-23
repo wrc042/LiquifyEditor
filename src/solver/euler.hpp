@@ -32,7 +32,7 @@ class EulerFluidSolver {
     void set_update_buffer(const function<void(const vector<Color> &)> &func) {
         _update_buffer = func;
     }
-    void assign_field(const vector<Color> &pixels) {
+    void init_image(const vector<Color> &pixels) {
         for (int i = 0; i < _img_width; i++) {
             for (int j = 0; j < _img_height; j++) {
                 _pixels[i + j * _img_width].a = pixels[i + j * _img_width].a;
