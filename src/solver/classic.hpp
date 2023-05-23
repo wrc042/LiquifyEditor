@@ -145,16 +145,34 @@ class ClassicWarpingSolver {
                 _density.pos2idx(pmouse - radius * 1.05 * Vector2d::Ones());
             idxup = _density.pos2idx(pmouse + radius * 1.05 * Vector2d::Ones());
 
+            // for (int i = idxlow.x(); i < idxup.x(); i++) {
+            //     for (int j = idxlow.y(); j < idxup.y(); j++) {
+            //         Vector2d px = _density.idx2pos(i, j);
+            //         double dx2 = (px - pmouse).squaredNorm();
+            //         if (dx2 < radius2) {
+            //             double fact =
+            //                 (radius2 - dx2) / ((radius2 - dx2) +
+            //                 dmouse.norm());
+            //             fact = fact * fact;
+            //             Vector2d dpos = fact * dmouse;
+            //             Vector2d srcpos = px - dpos;
+            //             _density(i, j) = oldd.linear_sample(srcpos);
+            //         }
+            //     }
+            // }
+
             for (int i = idxlow.x(); i < idxup.x(); i++) {
                 for (int j = idxlow.y(); j < idxup.y(); j++) {
                     Vector2d px = _density.idx2pos(i, j);
                     double dx2 = (px - pmouse).squaredNorm();
+                    double dx = (px - pmouse).norm();
                     if (dx2 < radius2) {
-                        double fact =
-                            (radius2 - dx2) / ((radius2 - dx2) + dmouse.norm());
+                        double fact = dx / radius - 1;
                         fact = fact * fact;
-                        Vector2d dpos = fact * dmouse;
-                        Vector2d srcpos = px - dpos;
+                        fact = fact * -0.2;
+                        fact = (1 - fact) * dx;
+                        Vector2d dpos = fact * (px - pmouse).normalized();
+                        Vector2d srcpos = pmouse + dpos;
                         _density(i, j) = oldd.linear_sample(srcpos);
                     }
                 }
