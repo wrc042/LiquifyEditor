@@ -1,6 +1,8 @@
 #pragma once
 #include "viewer/rlcore.hpp"
 
+#include "IO/uid.hpp"
+
 class RLClassicEditor : public RLCore {
   public:
     void reset_buffer(const vector<Color> &pixels) { reset_buffer(&pixels[0]); }
@@ -61,6 +63,16 @@ class RLClassicEditor : public RLCore {
     void init_callback(int bufnum) {
         DrawText("Initializing...", 700, 450, 30, BLACK);
     };
+    void save_image(int bufnum) {
+        if (!fs::exists(_saving_dir)) {
+            fs::create_directories(_saving_dir);
+        }
+        string name = IO::gen_rid();
+        string path = _saving_dir + name + ".png";
+        Image image = LoadImageFromTexture(_textures[bufnum]);
+        ExportImage(image, path.c_str());
+        UnloadImage(image);
+    }
     void update_callback(int bufnum) {
         DrawTexture(_textures[bufnum], _origin.x(), _origin.y(), WHITE);
 
@@ -146,6 +158,13 @@ class RLClassicEditor : public RLCore {
                                 float(_text_height * (++text_height_cnt)),
                                 float(_slider_width), float(_slider_height)},
                       "reset");
+
+        if (GuiButton(Rectangle{float(_text_left_padding),
+                                float(_text_height * (++text_height_cnt)),
+                                float(_slider_width), float(_slider_height)},
+                      "save")) {
+            save_image(bufnum);
+        }
         update_sovler_param();
     };
 
@@ -198,4 +217,6 @@ class RLClassicEditor : public RLCore {
     array<Texture, 2> _textures;
     array<Image, 2> _images;
     array<vector<Color>, 2> _pixel_buffers;
+
+    string _saving_dir = "output/";
 };
