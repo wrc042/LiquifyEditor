@@ -18,7 +18,8 @@ int main() {
     vector<Color> origin_pixels;
     ImageLoader(config["image"].asString()).load(origin_pixels);
 
-    EulerFluidSolver solver(config["level"].asInt());
+    EulerFluidSolver solver(config["level"].asInt(), config["levelsim"].asInt(),
+                            config["parallel_advection"].asBool());
     solver.init_image(origin_pixels);
     solver.set_reset_buffer(
         [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });

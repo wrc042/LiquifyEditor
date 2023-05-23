@@ -1,6 +1,8 @@
 {
     "type": "classic",
-    "level": 30,
+    "level": 100,
+    "levelsim": 15,
+    "parallel_advection": true,
     "image": "imgs/wallpaper/00.png",
     "output": "output"
 }

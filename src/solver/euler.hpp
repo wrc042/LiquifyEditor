@@ -5,17 +5,21 @@
 
 class EulerFluidSolver {
   public:
-    EulerFluidSolver(int level) {
-        _resolution = Vector2i(_level_basex, _level_basey) * level;
-        _origin = Vector2d::Zero();
-        _grid_spacing = 1. / (_resolution.x() - 1);
-        _velocityu.resize(_resolution - Vector2i ::UnitX(),
-                          _origin + Vector2d::UnitY() * _grid_spacing * 0.5,
-                          _grid_spacing);
-        _velocityv.resize(_resolution - Vector2i ::UnitY(),
-                          _origin + Vector2d::UnitX() * _grid_spacing * 0.5,
-                          _grid_spacing);
-        _density.resize(_resolution, _origin, _grid_spacing);
+    EulerFluidSolver(int level, int levelv, bool parallel_advection) {
+        _parallel_advection = parallel_advection;
+        _resolutionv = Vector2i(_level_basex, _level_basey) * levelv;
+        _originv = Vector2d::Zero();
+        _grid_spacingv = 1. / (_resolutionv.x() - 1);
+        _resolutiond = Vector2i(_level_basex, _level_basey) * level;
+        _origind = Vector2d::Zero();
+        _grid_spacingd = 1. / (_resolutiond.x() - 1);
+        _velocityu.resize(_resolutionv - Vector2i ::UnitX(),
+                          _originv + Vector2d::UnitY() * _grid_spacingv * 0.5,
+                          _grid_spacingv);
+        _velocityv.resize(_resolutionv - Vector2i ::UnitY(),
+                          _originv + Vector2d::UnitX() * _grid_spacingv * 0.5,
+                          _grid_spacingv);
+        _density.resize(_resolutiond, _origind, _grid_spacingd);
         _pixels.resize(_img_width * _img_height);
         _origin_pixels.resize(_img_width * _img_height);
         build_solver();
@@ -145,20 +149,20 @@ class EulerFluidSolver {
     }
     void build_solver() {
         typedef Eigen::Triplet<double> T;
-        int n = _resolution.prod();
+        int n = _resolutionv.prod();
         _projectoin_matrix.resize(n, n);
-        int offset = _resolution.y();
+        int offset = _resolutionv.y();
         std::vector<T> triple_list;
 
         int count = 0;
-        for (int i = 0; i < _resolution.x(); i++) {
-            for (int j = 0; j < _resolution.y(); j++) {
+        for (int i = 0; i < _resolutionv.x(); i++) {
+            for (int j = 0; j < _resolutionv.y(); j++) {
                 int coeff = 0;
                 if (i > 0) {
                     triple_list.push_back(T(count, (i - 1) * offset + j, -1));
                     coeff += 1;
                 }
-                if (i + 1 < _resolution.x()) {
+                if (i + 1 < _resolutionv.x()) {
                     triple_list.push_back(T(count, (i + 1) * offset + j, -1));
                     coeff += 1;
                 }
@@ -166,7 +170,7 @@ class EulerFluidSolver {
                     triple_list.push_back(T(count, i * offset + j - 1, -1));
                     coeff += 1;
                 }
-                if (j + 1 < _resolution.y()) {
+                if (j + 1 < _resolutionv.y()) {
                     triple_list.push_back(T(count, i * offset + j + 1, -1));
                     coeff += 1;
                 }
@@ -276,11 +280,23 @@ class EulerFluidSolver {
             }
         }
 
-        for (int i = 0; i < _density.resolution().x(); i++) {
-            for (int j = 0; j < _density.resolution().y(); j++) {
-                Vector2d pos = back_trace(oldu, oldv, time_interval,
-                                          _density.idx2pos(i, j));
-                _density(i, j) = oldd.linear_sample(pos);
+        if (_parallel_advection) {
+
+#pragma omp parallel for
+            for (int i = 0; i < _density.resolution().x(); i++) {
+                for (int j = 0; j < _density.resolution().y(); j++) {
+                    Vector2d pos = back_trace(oldu, oldv, time_interval,
+                                              _density.idx2pos(i, j));
+                    _density(i, j) = oldd.linear_sample(pos);
+                }
+            }
+        } else {
+            for (int i = 0; i < _density.resolution().x(); i++) {
+                for (int j = 0; j < _density.resolution().y(); j++) {
+                    Vector2d pos = back_trace(oldu, oldv, time_interval,
+                                              _density.idx2pos(i, j));
+                    _density(i, j) = oldd.linear_sample(pos);
+                }
             }
         }
     }
@@ -292,34 +308,34 @@ class EulerFluidSolver {
         return pt_start - time_interval * Vector2d(vu, vv);
         // double vu = mcr_sample(velocityu, pt_start);
         // double vv = mcr_sample(velocityv, pt_start);
-        // Vector2d midpoint = pt_start - 0.5 * time_interval * Vector2d(vu, vv);
-        // double midvu = mcr_sample(velocityu, midpoint);
-        // double midvv = mcr_sample(velocityv, midpoint);
-        // return pt_start - time_interval * Vector2d(midvu, midvv);
+        // Vector2d midpoint = pt_start - 0.5 * time_interval * Vector2d(vu,
+        // vv); double midvu = mcr_sample(velocityu, midpoint); double midvv =
+        // mcr_sample(velocityv, midpoint); return pt_start - time_interval *
+        // Vector2d(midvu, midvv);
     }
     void projection() {
-        int n = _resolution.prod();
-        int offset = _resolution.y();
+        int n = _resolutionv.prod();
+        int offset = _resolutionv.y();
         Eigen::VectorXd b(n);
         Eigen::VectorXd p(n);
 
         int count = 0;
-        for (int i = 0; i < _resolution.x(); i++) {
-            for (int j = 0; j < _resolution.y(); j++) {
+        for (int i = 0; i < _resolutionv.x(); i++) {
+            for (int j = 0; j < _resolutionv.y(); j++) {
                 b(count) =
-                    -_grid_spacing * (_velocityu(i + 1, j) - _velocityu(i, j) +
-                                      _velocityv(i, j + 1) - _velocityv(i, j));
+                    -_grid_spacingv * (_velocityu(i + 1, j) - _velocityu(i, j) +
+                                       _velocityv(i, j + 1) - _velocityv(i, j));
                 if (i == 0) {
-                    b(count) -= _grid_spacing * _velocityu(i, j);
+                    b(count) -= _grid_spacingv * _velocityu(i, j);
                 }
-                if (i + 1 == _resolution.x()) {
-                    b(count) -= -_grid_spacing * _velocityu(i + 1, j);
+                if (i + 1 == _resolutionv.x()) {
+                    b(count) -= -_grid_spacingv * _velocityu(i + 1, j);
                 }
                 if (j == 0) {
-                    b(count) -= _grid_spacing * _velocityv(i, j);
+                    b(count) -= _grid_spacingv * _velocityv(i, j);
                 }
-                if (j + 1 == _resolution.y()) {
-                    b(count) -= -_grid_spacing * _velocityv(i, j + 1);
+                if (j + 1 == _resolutionv.y()) {
+                    b(count) -= -_grid_spacingv * _velocityv(i, j + 1);
                 }
                 count++;
             }
@@ -336,7 +352,7 @@ class EulerFluidSolver {
                 }
                 _velocityu(i, j) -=
                     (p(i * offset + j) - p((i - 1) * offset + j)) /
-                    _grid_spacing;
+                    _grid_spacingv;
             }
         }
 
@@ -347,7 +363,8 @@ class EulerFluidSolver {
                     continue;
                 }
                 _velocityv(i, j) -=
-                    (p(i * offset + j) - p(i * offset + j - 1)) / _grid_spacing;
+                    (p(i * offset + j) - p(i * offset + j - 1)) /
+                    _grid_spacingv;
             }
         }
     }
@@ -372,9 +389,14 @@ class EulerFluidSolver {
 
     double _damping = 0;
 
-    Vector2i _resolution;
-    Vector2d _origin;
-    double _grid_spacing;
+    bool _parallel_advection = false;
+
+    Vector2i _resolutionv;
+    Vector2d _originv;
+    double _grid_spacingv;
+    Vector2i _resolutiond;
+    Vector2d _origind;
+    double _grid_spacingd;
     Grid2<double> _velocityu;
     Grid2<double> _velocityv;
     Grid2<Vector4d> _density;
