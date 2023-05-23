@@ -161,17 +161,37 @@ class ClassicWarpingSolver {
             //     }
             // }
 
+            // for (int i = idxlow.x(); i < idxup.x(); i++) {
+            //     for (int j = idxlow.y(); j < idxup.y(); j++) {
+            //         Vector2d px = _density.idx2pos(i, j);
+            //         double dx2 = (px - pmouse).squaredNorm();
+            //         double dx = (px - pmouse).norm();
+            //         if (dx2 < radius2) {
+            //             double fact = dx / radius - 1;
+            //             fact = fact * fact;
+            //             fact = fact * -0.2;
+            //             fact = (1 - fact) * dx;
+            //             Vector2d dpos = fact * (px - pmouse).normalized();
+            //             Vector2d srcpos = pmouse + dpos;
+            //             _density(i, j) = oldd.linear_sample(srcpos);
+            //         }
+            //     }
+            // }
+
             for (int i = idxlow.x(); i < idxup.x(); i++) {
                 for (int j = idxlow.y(); j < idxup.y(); j++) {
                     Vector2d px = _density.idx2pos(i, j);
                     double dx2 = (px - pmouse).squaredNorm();
                     double dx = (px - pmouse).norm();
                     if (dx2 < radius2) {
-                        double fact = dx / radius - 1;
+                        double fact = 1 - dx2 / radius2;
                         fact = fact * fact;
-                        fact = fact * -0.2;
-                        fact = (1 - fact) * dx;
-                        Vector2d dpos = fact * (px - pmouse).normalized();
+                        fact = fact * 0.5;
+
+                        double theta =
+                            atan2((px - pmouse).x(), (px - pmouse).y());
+                        theta += fact;
+                        Vector2d dpos = Vector2d(sin(theta), cos(theta)) * dx;
                         Vector2d srcpos = pmouse + dpos;
                         _density(i, j) = oldd.linear_sample(srcpos);
                     }
