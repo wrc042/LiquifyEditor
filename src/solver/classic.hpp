@@ -117,6 +117,7 @@ class ClassicWarpingSolver {
             }
             t1 = omp_get_wtime();
             solver_param.solver_fps = 1 / (t1 - t0);
+            solver_param.solver_reset = _param.reset;
         }
     }
 
@@ -130,9 +131,10 @@ class ClassicWarpingSolver {
         }
     }
     void advection() {
-        if (_param.reset) {
+        if (_param.solver_reset != _param.reset) {
             reset_image();
             assign_field(_origin_pixels);
+            _param.solver_reset = _param.reset;
         }
         if (_param.click) {
             Grid2<Vector4d> oldd;

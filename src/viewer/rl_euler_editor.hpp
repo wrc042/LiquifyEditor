@@ -160,11 +160,12 @@ class RLEulerEditor : public RLCore {
                       NULL, TextFormat("Damping: %0.2f", _damping), _damping,
                       _damping_min, _damping_max);
 
-        _reset =
-            GuiButton(Rectangle{float(_text_left_padding),
+        if (GuiButton(Rectangle{float(_text_left_padding),
                                 float(_text_height * (++text_height_cnt)),
                                 float(_slider_width), float(_slider_height)},
-                      "reset");
+                      "reset")) {
+            _reset = !_reset;
+        }
 
         if (GuiButton(Rectangle{float(_text_left_padding),
                                 float(_text_height * (++text_height_cnt)),

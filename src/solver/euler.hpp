@@ -134,6 +134,7 @@ class EulerFluidSolver {
             }
             t1 = omp_get_wtime();
             solver_param.solver_fps = 1 / (t1 - t0);
+            solver_param.solver_reset = _param.reset;
         }
     }
 
@@ -197,9 +198,10 @@ class EulerFluidSolver {
         });
     }
     void update() {
-        if (_param.reset) {
+        if (_param.solver_reset != _param.reset) {
             reset_image();
             assign_field(_origin_pixels);
+            _param.solver_reset = _param.reset;
         }
         if (_param.click) {
             Vector2d dmouse =
