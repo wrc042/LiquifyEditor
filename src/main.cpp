@@ -14,7 +14,9 @@ int main() {
     auto config = IO::load_yaml_config("config.yaml");
 
     vector<Color> origin_pixels;
-    ImageLoader(config["image"].as<string>()).load(origin_pixels);
+    ImageLoader(config["image"].as<string>(),
+                config["image_resize_type"].as<string>())
+        .load(origin_pixels);
 
     if (config["type"].as<string>() == "euler") {
 

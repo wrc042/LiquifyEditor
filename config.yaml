@@ -6,4 +6,6 @@ levelsim: 15
 parallel_advection: false
 # image: blocks
 image: imgs/wallpaper/00.png
+image_resize_type: fullscreen
+# image_resize_type: fullimage
 output: output
