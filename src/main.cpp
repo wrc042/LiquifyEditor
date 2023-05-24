@@ -11,19 +11,19 @@
 int main() {
     omp_set_nested(true);
 
-    auto config = IO::load_config("config.json");
+    auto config = IO::load_yaml_config("config.yaml");
 
     vector<Color> origin_pixels;
-    ImageLoader(config["image"].asString()).load(origin_pixels);
+    ImageLoader(config["image"].as<string>()).load(origin_pixels);
 
-    if (config["type"].asString() == "euler") {
+    if (config["type"].as<string>() == "euler") {
 
         RLEulerEditor editor;
         editor.init("liquify editor");
 
-        EulerFluidSolver solver(config["level"].asInt(),
-                                config["levelsim"].asInt(),
-                                config["parallel_advection"].asBool());
+        EulerFluidSolver solver(config["level"].as<int>(),
+                                config["levelsim"].as<int>(),
+                                config["parallel_advection"].as<bool>());
         solver.init_image(origin_pixels);
         solver.set_reset_buffer(
             [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });
@@ -39,11 +39,11 @@ int main() {
 #pragma omp section
             { solver.run(is_closed, solver_param); }
         }
-    } else if (config["type"].asString() == "classic") {
+    } else if (config["type"].as<string>() == "classic") {
         RLClassicEditor editor;
         editor.init("liquify editor");
 
-        ClassicWarpingSolver solver(config["level"].asInt());
+        ClassicWarpingSolver solver(config["level"].as<int>());
         solver.init_image(origin_pixels);
         solver.set_reset_buffer(
             [&](const vector<Color> &pixels) { editor.reset_buffer(pixels); });

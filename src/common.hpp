@@ -1,7 +1,7 @@
 #pragma once
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
-#include "json/json.h"
+// #include "json/json.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +12,7 @@
 #include <random>
 #include <set>
 #include <sstream>
+#include <yaml-cpp/yaml.h>
 
 namespace fs = std::filesystem;
 
@@ -24,7 +25,8 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::Vector3i;
 using Eigen::VectorXd;
-using Jvalue = Json::Value;
+// using Jvalue = Json::Value;
+using Ynode = YAML::Node;
 using std::array;
 using std::cout;
 using std::endl;
