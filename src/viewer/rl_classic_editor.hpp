@@ -31,8 +31,8 @@ class RLClassicEditor : public RLCore {
                 _pixel_buffers[bufnum[1]][i] = pixels[i];
             }
             update_bufnum(bufnum);
+            set_bufnum(bufnum, is_reset);
         }
-        set_bufnum(bufnum, is_reset);
     }
     const bool &is_closed() { return _is_closed; }
     ClassicSolverParam &solver_param() { return _solver_param; }

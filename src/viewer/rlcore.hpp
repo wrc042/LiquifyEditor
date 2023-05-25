@@ -30,7 +30,9 @@ class RLCore {
         array<int, 2> bufnum;
         bool is_reset;
 
-        get_bufnum(bufnum, is_reset);
+        omp_set_lock(&_buflock);
+        bufnum = _bufnum;
+        is_reset = _is_reset;
 
         if (!is_reset) {
             texture_callback(bufnum[1]);
@@ -49,7 +51,9 @@ class RLCore {
         }
         bufnum[0] = bufnum[1];
 
-        set_bufnum(bufnum, is_reset);
+        _bufnum = bufnum;
+        _is_reset = is_reset;
+        omp_unset_lock(&_buflock);
         DrawFPS(3, 0);
         EndDrawing();
     }
