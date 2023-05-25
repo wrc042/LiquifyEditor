@@ -64,14 +64,13 @@ The editor provide severial options specified by `config.yaml`.
 
 <img src="imgs/readme/euler1.png" alt="euler1" width="45%">
 
----
+<br>
 
 <img src="imgs/readme/euler2.png" alt="euler2" width="45%">
 
 <img src="imgs/readme/euler3.png" alt="euler3" width="45%">
 
----
-
+<br>
 
 <img src="imgs/readme/warping0.png" alt="warping0" width="45%">
 
