@@ -24,9 +24,9 @@ xmake run
 
 ### Operations
 
-- `left mouse`: use brush.
+- `left mouse`: brush.
 - `middle mouse`: slide to adjust brush radius.
-- `middle mouse`: change brush behaviors.
+- `right mouse`: click to change brush behaviors.
   - `Trans` (Translation)
   - `ScalingUp`
   - `ScalingDown`
@@ -45,12 +45,12 @@ The editor provide severial options specified by `config.yaml`.
 - simulation `levelsim`
   - The grid resolution of fluid velocity field is `(12, 9) x levelsim`. Since you want to play it in real time, it's lower than image resolution.
 - `parallel_advection`
-  - Whether to use multiple CPU core to accelerate simulation.
+  - Whether to use multiple CPU cores to accelerate simulation.
   - On my Ryzen 9 5900HX laptop, `levelsim = 15` runs 10 simulation FPS by `false` and 18 simulation FPS by `true`.
 - `image`
   - `blocks`: default image of a black and white checkerboard.
   - Your image path: now only `.png` pictures are supported.
-    - convert with `python convert.py -i img_path`
+    - Convert with `python convert.py -i img_path`
 - `image_resize_type`
   - Images are scaled equally on two axises.
   - `fullscreen`: the `1200 x 900` screen is filled.
