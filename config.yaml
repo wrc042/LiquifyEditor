@@ -2,8 +2,8 @@ type: euler
 # type: classic
 level: 100
 levelsim: 15
-# parallel_advection: true
-parallel_advection: false
+parallel_advection: true
+# parallel_advection: false
 # image: blocks
 image: imgs/wallpaper/00.png
 image_resize_type: fullscreen

@@ -366,7 +366,7 @@ class EulerFluidSolver {
 
         if (_parallel_advection) {
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(4)
             for (int i = 0; i < _density.resolution().x(); i++) {
                 for (int j = 0; j < _density.resolution().y(); j++) {
                     Vector2d pos = back_trace(oldu, oldv, time_interval,
