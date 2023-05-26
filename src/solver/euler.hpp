@@ -129,10 +129,6 @@ class EulerFluidSolver {
                 update_count += 1;
             }
             t1 = omp_get_wtime();
-            if (1 / (t1 - t0) > _target_fps) {
-                _sleep(ceil((1e3 / _target_fps) - (t1 - t0)));
-            }
-            t1 = omp_get_wtime();
             solver_param.solver_fps = 1 / (t1 - t0);
             solver_param.solver_reset = _param.reset;
         }
